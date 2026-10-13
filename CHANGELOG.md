@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- 新增 `/dp-cj-update` 自动更新命令。
+- 从 GitHub Release 识别最新版本，下载并校验 SHA-256。
+- 更新前自动备份，保留用户 `config.json` 和本地工作区。
+- 新增 `check-update.py` 版本提醒。
+
 ## 1.1.0
 
 - 默认飞书 Base 改为 `AjdAbLBMEazYJRsX6u7cKUXjnBM`。
@@ -11,3 +18,5 @@
 ## 1.0.0
 
 - 初始可分发模板版本。
+
+
