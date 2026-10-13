@@ -1,0 +1,163 @@
+{
+  "project_name": "短视频文案分类提取入库",
+  "workspace_root": "REPLACE_ME_ABSOLUTE_WORKSPACE_PATH",
+  "python_executable": "python",
+  "archive_dir": "01_口播文案库",
+  "tmp_dir": "_tmp",
+  "extraction": {
+    "transcribe_script": "REPLACE_ME_PATH_TO_transcribe.py",
+    "model_dir": "~/.cache/modelscope/models/poloniumrock--SenseVoiceSmallOnnx/snapshots/master",
+    "allow_online_links": true,
+    "allow_local_files": true,
+    "default_platform": "抖音"
+  },
+  "routing": {
+    "ask_before_processing": true,
+    "options": [
+      "工厂实体店",
+      "情感(泛流量)",
+      "自媒体+AI",
+      "搞钱(干货)",
+      "人设",
+      "营销"
+    ]
+  },
+  "feishu": {
+    "base_token": "AjdAbLBMEazYJRsX6u7cKUXjnBM",
+    "base_url": "https://my.feishu.cn/base/AjdAbLBMEazYJRsX6u7cKUXjnBM?from=from_copylink",
+    "tables": {
+      "工厂实体店": {
+        "table_id": "tblhzsQlzuah2w5r",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "likes_collects": "赞藏数",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      },
+      "情感(泛流量)": {
+        "table_id": "tblmzc8zRR6xjGNa",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "title_screenshot": "标题截图",
+          "likes_screenshot": "赞藏截图",
+          "copy_type": "文案类型",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      },
+      "自媒体+AI": {
+        "table_id": "tblUL8JV1hRRUIfI",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "title_screenshot": "标题截图",
+          "likes_screenshot": "赞藏截图",
+          "copy_type": "文案类型",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      },
+      "搞钱(干货)": {
+        "table_id": "tbljwOjT524wQjWe",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "title_screenshot": "标题截图",
+          "likes_screenshot": "赞藏截图",
+          "copy_type": "文案类型",
+          "likes_collects": "赞藏数",
+          "original_content_type": "原始内容类型",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      },
+      "人设": {
+        "table_id": "tblH5TvwlLt9yppX",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "title_screenshot": "标题截图",
+          "likes_screenshot": "赞藏截图",
+          "copy_type": "文案类型",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      },
+      "营销": {
+        "table_id": "tblJxtZi4mskQVqY",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "title_screenshot": "标题截图",
+          "likes_screenshot": "赞藏截图",
+          "copy_type": "文案类型",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数"
+        }
+      }
+    }
+  }
+}
