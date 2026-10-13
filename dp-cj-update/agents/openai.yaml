@@ -1,0 +1,4 @@
+interface:
+  display_name: "dp-cj-update"
+  short_description: "从 GitHub 更新 dp-cj，保留本地配置"
+  default_prompt: "使用 $dp-cj-update，检查并更新 dp-cj。"
