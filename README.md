@@ -2,25 +2,30 @@
 
 `dp-cj` 是一个 WorkBuddy Skill：接收抖音链接、分享文案或本地媒体文件，先确认目标分类表，再提取文案、封面、时长和互动数据，并写入飞书 Base。
 
+## 更新
+
+安装后输入 `/dp-cj-update`，WorkBuddy 会自动识别 GitHub 最新 Release 并更新 `dp-cj`；本地 `config.json` 会保留。
+
 ## 下载
 
-- 直接下载压缩包：`dp-cj-v1.1.0.zip`
+- 直接下载压缩包：`dp-cj-v1.2.0.zip`
 - 安装和完整使用说明：`安装与使用说明.md`
 - Skill 源码目录：`dp-cj/`
 
 ## 快速开始
 
-1. 下载并解压 `dp-cj-v1.1.0.zip`。
+1. 下载并解压 `dp-cj-v1.2.0.zip`。
 2. 将 `dp-cj/` 放入 WorkBuddy 的 Skill 目录。
-3. 复制 `config.example.json` 为 `config.json`，填写本地工作区和 Python 路径。
-4. 运行：
+3. 将 `dp-cj` 和 `dp-cj-update` 都安装到 Skill 目录。
+4. 复制 `config.example.json` 为 `config.json`，填写本地工作区和 Python 路径。
+5. 运行：
 
 ```powershell
 python scripts/setup_workspace.py --config config.json
 python scripts/doctor.py --config config.json --live
 ```
 
-5. 在 WorkBuddy 中发送：
+6. 在 WorkBuddy 中发送：
 
 ```text
 /dp-cj https://v.douyin.com/xxxxxxx/
@@ -40,3 +45,4 @@ python scripts/doctor.py --config config.json --live
 ## 范围
 
 只做提取和飞书 Base 入库，不做改写、洗稿、润色或发布。
+
