@@ -4,17 +4,17 @@
 
 ## 更新
 
-安装后输入 `/dp-cj-update`，WorkBuddy 会自动识别 GitHub 最新 Release 并更新 `dp-cj`；本地 `config.json` 会保留。
+安装后输入 `/dp-cj-update`，WorkBuddy 会自动识别 GitHub 最新 Release 并更新 `dp-cj`；本地路径和自定义配置保留，官方 Base 新分类及行业映射自动补入并备份原配置。
 
 ## 下载
 
-- 直接下载压缩包：`dp-cj-v1.2.0.zip`
+- 直接下载压缩包：`dp-cj-v1.4.0.zip`
 - 安装和完整使用说明：`安装与使用说明.md`
 - Skill 源码目录：`dp-cj/`
 
 ## 快速开始
 
-1. 下载并解压 `dp-cj-v1.2.0.zip`。
+1. 下载并解压 `dp-cj-v1.4.0.zip`。
 2. 将 `dp-cj/` 放入 WorkBuddy 的 Skill 目录。
 3. 将 `dp-cj` 和 `dp-cj-update` 都安装到 Skill 目录。
 4. 复制 `config.example.json` 为 `config.json`，填写本地工作区和 Python 路径。
@@ -41,6 +41,7 @@ python scripts/doctor.py --config config.json --live
 4. 搞钱(干货)
 5. 人设
 6. 营销
+7. 情感共鸣型（泛流量）
 
 ## 范围
 

@@ -31,8 +31,10 @@ import sys
 import time
 import wave
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 import requests
 
@@ -64,20 +66,27 @@ def fail(msg):
 
 
 def extract_link(text):
-    m = re.search(r"https?://v\.douyin\.com/[\w-]+/?|https?://www\.douyin\.com/video/\d+", text)
+    m = re.search(r"https?://v\.douyin\.com/[\w-]+/?|https?://www\.douyin\.com/(?:video|(?:share/)?note)/\d+", text)
     return m.group(0) if m else None
 
 
 def resolve_video_id(url):
-    if "/video/" in url:
-        m = re.search(r"/video/(\d+)", url)
-        if m:
-            return m.group(1)
+    note_hint = ("这是图文(note)作品链接，在线通道暂只支持视频作品。图文取元数据请走作者作品列表接口 "
+                 "/aweme/v1/web/aweme/post/ 的同 aweme_id 节点（封面取 images[0]），"
+                 "详见 references/field-extraction.md；或提供本地文件用 --file 模式")
+    m = re.search(r"/video/(\d+)", url)
+    if m:
+        return m.group(1)
+    if re.search(r"/(?:share/)?note/(\d+)", url):
+        fail(note_hint)
     r = requests.get(url, headers={"User-Agent": UA}, allow_redirects=False, timeout=15)
-    m = re.search(r"/video/(\d+)", r.headers.get("Location", ""))
-    if not m:
-        fail(f"无法从链接解析视频ID: {url}")
-    return m.group(1)
+    loc = r.headers.get("Location", "")
+    m = re.search(r"/video/(\d+)", loc)
+    if m:
+        return m.group(1)
+    if re.search(r"/(?:share/)?note/(\d+)", loc):
+        fail(note_hint)
+    fail(f"无法从链接解析视频ID: {url}")
 
 
 def open_in_browser(vid, headed=False):
@@ -125,7 +134,9 @@ def open_in_browser(vid, headed=False):
         def on_response(resp):
             if "/aweme/v1/web/aweme/detail" in resp.url and not found["detail"]:
                 try:
-                    found["detail"] = resp.json()
+                    candidate = resp.json()
+                    if str((candidate.get("aweme_detail") or {}).get("aweme_id")) == str(vid):
+                        found["detail"] = candidate
                 except Exception:
                     pass
 
@@ -167,28 +178,48 @@ def open_in_browser(vid, headed=False):
     return found, title
 
 
-def choose_cover(video):
-    candidates = []
-    for key in ("origin_cover", "cover", "dynamic_cover"):
+COVER_FIELD_PRIORITY = (
+    "dynamic_cover",        # 展示封面大图(无tplv原对象, 实测 724x966~1215x1621) -> 最优先
+    "cover_original_scale", # 展示封面本体(tplv-dy-360p, 实测 360x480) -> 次优
+)
+
+
+def choose_cover(video, item=None):
+    """选封面 -> (url, width, height)。
+
+    字段语义(2026-10 实测, 勿按字面猜):
+      - dynamic_cover:        作品实际展示封面的大图, 最清晰 -> 最优先
+      - cover_original_scale: 作品实际展示封面本体 -> 次优
+      - cover / origin_cover: 横裁图或自动截帧，不自动兜底；缺少可靠源就返回空。
+    图文(note)作品: 展示封面是 images[0] 竖版原图(约 1080x1920), 优先于 video 节点;
+    其 url_list 里 webp 变体在前、jpeg 变体在后, 优先取 jpeg 变体。
+    注意: 各字段元数据 width/height 与实际下载尺寸不符(如 dynamic_cover 元数据
+    720x720、实下 724x966+), 不可用作选图打分依据, 按字段优先级取即可。
+    """
+    if item:
+        images = item.get("images") or []
+        if images and isinstance(images[0], dict):
+            node = images[0]
+            urls = node.get("url_list") or []
+            if urls:
+                jpeg = next((u for u in urls
+                             if u.split("?", 1)[0].lower().endswith((".jpeg", ".jpg"))), urls[0])
+                return jpeg, int(node.get("width") or 0), int(node.get("height") or 0)
+    for key in COVER_FIELD_PRIORITY:
         node = video.get(key)
         if not isinstance(node, dict):
             continue
         urls = node.get("url_list") or []
         if not urls:
             continue
-        width = int(node.get("width") or 0)
-        height = int(node.get("height") or 0)
-        vertical_bonus = 1_000_000 if height > width * 1.15 else 0
-        score = vertical_bonus + width * height
-        candidates.append((score, key, urls[0], width, height))
-    if not candidates:
-        return "", 0, 0
-    _score, _key, url, width, height = max(candidates, key=lambda x: x[0])
-    return url, width, height
+        return urls[0], int(node.get("width") or 0), int(node.get("height") or 0)
+    return "", 0, 0
 
 
-def parse_detail(detail, page_title):
+def parse_detail(detail, page_title, expected_id=None):
     item = detail.get("aweme_detail") or {}
+    if expected_id is not None and str(item.get("aweme_id")) != str(expected_id):
+        raise ValueError("作品元数据 ID 不匹配或缺失，不能使用推荐视频或错误跳转页面。")
     author = (item.get("author") or {}).get("nickname", "")
     desc = item.get("desc", "") or page_title.replace(" - 抖音", "")
     st = item.get("statistics") or {}
@@ -196,7 +227,9 @@ def parse_detail(detail, page_title):
     pub = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M") if ts else "—"
     video = item.get("video") or {}
     dur_ms = item.get("duration") or video.get("duration") or 0
-    cover_url, cover_width, cover_height = choose_cover(video)
+    cover_url, cover_width, cover_height = choose_cover(video, item)
+    cover_source = "images[0]" if cover_url and item.get("images") else next(
+        (key for key in COVER_FIELD_PRIORITY if cover_url and cover_url in (video.get(key) or {}).get("url_list", [])), "")
     return {
         "author": author,
         "desc": desc,
@@ -207,6 +240,7 @@ def parse_detail(detail, page_title):
         "collect": st.get("collect_count", "—"),
         "share": st.get("share_count", "—"),
         "cover_url": cover_url,
+        "cover_source": cover_source,
         "cover_width": cover_width,
         "cover_height": cover_height,
     }
@@ -424,6 +458,8 @@ def build_payload(meta, paragraphs, method, link, vid, category, default_platfor
         "collects": to_int(meta.get("collect")),
         "shares": to_int(meta.get("share")),
         "cover": meta.get("cover_url") or "",
+        "cover_source": meta.get("cover_source") or "",
+        "cover_verified": False,
     }
 
 
@@ -545,7 +581,10 @@ def main():
     print(f"[video] id={vid}", flush=True)
 
     found, page_title = open_in_browser(vid, headed=args.headed)
-    meta = parse_detail(found["detail"], page_title)
+    try:
+        meta = parse_detail(found["detail"] or {}, page_title, expected_id=vid)
+    except ValueError as e:
+        fail(str(e))
     print(f"[meta] {meta['author']} | {meta['desc'][:40]} | 发布 {meta['publish']}", flush=True)
 
     tmp_wav = os.path.join(os.environ.get("TEMP", "."), f"dy_{vid}.wav")

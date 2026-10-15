@@ -14,7 +14,7 @@ metadata:
 ## 更新范围
 
 - 只更新 GitHub 仓库 `sud981953-netizen/dp-cj` 中的 `dp-cj` 和 `dp-cj-update`。
-- 保留已存在的 `config.json`，不覆盖用户的工作区、Python、转写内核和飞书配置。
+- 保留已存在的 `config.json`，不覆盖用户的工作区、Python、转写内核及自定义飞书配置；setup 会为官方 Base 增量补充缺失分类与行业映射，并备份原配置。
 - 保留其他 WorkBuddy Skill 和用户文件。
 - 不创建后台任务、定时任务或 Agent Hook。
 
@@ -42,7 +42,7 @@ python scripts/update_dp_cj.py
 2. 校验 SHA-256。
 3. 备份当前 `dp-cj`。
 4. 更新 `dp-cj` 与 `dp-cj-update`，但跳过 `config.json`。
-5. 运行 `setup_workspace.py` 和 `doctor.py --live`。
+5. 运行 `setup_workspace.py`，备份并迁移官方 Base 的缺失分类/行业配置，再运行 `doctor.py --live`。
 
 ### 3. 回复格式
 

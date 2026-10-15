@@ -1,4 +1,4 @@
-# dp-cj 纯提取版模板包 v1.2.0
+# dp-cj 纯提取版模板包 v1.4.0
 
 > 完整安装和使用步骤见同目录 `安装与使用说明.md`；Skill 安装后也可查看 `dp-cj/使用说明.md`。安装后输入 `/dp-cj-update` 可自动更新。
 
@@ -50,6 +50,7 @@ https://my.feishu.cn/base/AjdAbLBMEazYJRsX6u7cKUXjnBM?from=from_copylink
 4. 搞钱(干货)
 5. 人设
 6. 营销
+7. 情感共鸣型（泛流量）
 
 每次收到链接，都必须先让用户确认进入哪张表；确认前不提取、不写库。
 

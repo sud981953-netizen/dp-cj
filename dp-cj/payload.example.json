@@ -17,5 +17,10 @@
   "likes": 0,
   "comments": 0,
   "collects": 0,
-  "shares": 0
+  "shares": 0,
+  "industry_status": "undetermined",
+  "industry_reason": "示例文案没有明确主营业务，实际使用时按全文判断。",
+  "cover_verified": false,
+  "cover_source": "",
+  "cover_verification_note": ""
 }

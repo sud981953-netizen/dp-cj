@@ -4,12 +4,15 @@ import argparse
 from pathlib import Path
 
 from config_util import ConfigError, config_root, load_config
+from migrate_config import migrate_config
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="初始化短视频文案提取工作区")
     ap.add_argument("--config", default=None)
     args = ap.parse_args()
     try:
+        if migrate_config(args.config):
+            print("[OK] 已补充官方 Base 的新分类与行业映射；原配置已备份，本地路径与自定义配置保留。")
         cfg, cfg_path = load_config(args.config)
         root = config_root(cfg, cfg_path)
     except ConfigError as e:

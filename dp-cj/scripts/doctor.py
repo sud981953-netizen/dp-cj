@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config_util import ConfigError, config_root, is_placeholder, load_config
 
-EXPECTED_TABLES = ["工厂实体店", "情感(泛流量)", "自媒体+AI", "搞钱(干货)", "人设", "营销"]
+EXPECTED_TABLES = ["工厂实体店", "情感(泛流量)", "自媒体+AI", "搞钱(干货)", "人设", "营销", "情感共鸣型（泛流量）"]
 COMMON_FIELDS = ["标题", "文案全文", "开头+金句", "选题", "链接", "平台", "发布日期", "视频时长", "点赞数", "评论数", "收藏数", "分享数"]
 
 
@@ -95,6 +95,13 @@ def main() -> int:
         check(f"配置字段 {name}", not missing, "缺少：" + "、".join(missing) if missing else "齐全")
         if args.live and lark_ok:
             response = run_cli(["base", "+field-list", "--base-token", feishu["base_token"], "--table-id", t["table_id"]])
+            fields = response.get("data", {}).get("fields") or []
+            industry = next((f for f in fields if f.get("name") == "行业"), None)
+            if industry:
+                check(f"行业单选 {name}", industry.get("type") == "select" and industry.get("multiple") is False, " / ".join(o["name"] for o in industry.get("options", [])))
+                check(f"行业映射 {name}", t["field_map"].get("industry") == "行业", "industry → 行业")
+            elif "industry" in t["field_map"]:
+                check(f"行业字段 {name}", False, "配置要求行业，但实时字段缺失")
             actual = {f.get("name") for f in (response.get("data", {}).get("fields") or [])} if response.get("ok") else set()
             required_missing = sorted({f for f in COMMON_FIELDS if f not in actual})
             optional_missing = sorted((mapped - actual) - set(COMMON_FIELDS))

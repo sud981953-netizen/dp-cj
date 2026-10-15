@@ -19,7 +19,8 @@
       "自媒体+AI",
       "搞钱(干货)",
       "人设",
-      "营销"
+      "营销",
+      "情感共鸣型（泛流量）"
     ]
   },
   "feishu": {
@@ -42,7 +43,8 @@
           "likes": "点赞数",
           "comments": "评论数",
           "collects": "收藏数",
-          "shares": "分享数"
+          "shares": "分享数",
+          "industry": "行业"
         }
       },
       "情感(泛流量)": {
@@ -154,6 +156,26 @@
           "comments": "评论数",
           "collects": "收藏数",
           "shares": "分享数"
+        }
+      },
+      "情感共鸣型（泛流量）": {
+        "table_id": "tblbnZuCHc3K7qDc",
+        "dedupe_field": "链接",
+        "field_map": {
+          "title": "标题",
+          "full_text": "文案全文",
+          "opening_and_golden": "开头+金句",
+          "topic": "选题",
+          "source_url": "链接",
+          "platform": "平台",
+          "published_date": "发布日期",
+          "cover": "封面",
+          "duration": "视频时长",
+          "likes": "点赞数",
+          "comments": "评论数",
+          "collects": "收藏数",
+          "shares": "分享数",
+          "industry": "行业"
         }
       }
     }

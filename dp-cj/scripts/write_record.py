@@ -21,6 +21,7 @@ CATEGORY_NUMBERS = {
     "4": "搞钱(干货)",
     "5": "人设",
     "6": "营销",
+    "7": "情感共鸣型（泛流量）",
 }
 ATTACHMENT_FIELDS = {"cover", "title_screenshot", "likes_screenshot"}
 
@@ -43,7 +44,48 @@ def run_cli(args: list[str], cwd: str | None = None) -> dict:
 
 def normalize_category(value) -> str:
     text = str(value or "").strip()
+    if text == "情感共鸣型(泛流量)":
+        text = "情感共鸣型（泛流量）"
     return CATEGORY_NUMBERS.get(text, text)
+
+
+# 只归一化模型已经判断的行业，不用关键词计数代替全文语义判断。
+INDUSTRY_ALIASES = {
+    "火锅店": "餐饮", "卤味店": "餐饮", "酥肉面馆": "餐饮", "面馆": "餐饮", "烧烤店": "餐饮",
+    "女装店": "服装", "男装店": "服装", "童装店": "服装", "服装店": "服装",
+    "门窗厂": "门窗", "系统窗": "门窗", "铝合金门窗": "门窗",
+    "五金店": "五金", "五金配件": "五金", "瓷砖店": "瓷砖", "纸箱厂": "纸箱", "飞机盒": "纸箱",
+}
+
+
+def prepare_fields(payload: dict, configured_map: dict, fields: list[dict]) -> dict:
+    actual = {f.get("name"): f for f in fields}
+    field_map = {k: v for k, v in configured_map.items() if v in actual}
+    if "行业" in actual:
+        field_map["industry"] = "行业"
+        field = actual["行业"]
+        if field.get("type") != "select" or field.get("multiple") is not False:
+            raise ConfigError("行业必须是单选字段，请先核对真实结构。")
+        value = payload.get("industry")
+        if value not in (None, ""):
+            if not isinstance(value, str):
+                raise ConfigError("industry 必须是单个行业字符串，不能是数组。")
+            value = INDUSTRY_ALIASES.get(value.strip(), value.strip())
+            options = {o["name"] for o in field.get("options", [])}
+            if value not in options:
+                raise ConfigError(f"行业“{value}”不在实时单选项中；先核对归类或补充规范选项再写入。")
+            evidence = payload.get("industry_evidence")
+            if not isinstance(evidence, str) or not evidence.strip() or evidence not in payload.get("full_text", ""):
+                raise ConfigError("缺少文案全文中的行业依据原句 industry_evidence。")
+            payload["industry"] = value
+        elif payload.get("industry_status") != "undetermined" or not str(payload.get("industry_reason") or "").strip():
+            raise ConfigError("请先判断行业；无法判断时填写 industry_status=undetermined 和 industry_reason。")
+    if payload.get("cover") and field_map.get("cover"):
+        if payload.get("cover_verified") is not True or not payload.get("cover_source") or not payload.get("cover_verification_note"):
+            raise ConfigError("封面尚未核验：查看图片并核对作品后填写 cover_verified、cover_source、cover_verification_note。")
+        if payload["cover_source"] in {"origin_cover", "first_frame", "poster", "cover"}:
+            raise ConfigError("随机截帧或横裁封面不能自动写入，请取得作品展示封面。")
+    return field_map
 
 
 def normalize_payload(raw: dict, category: str) -> dict:
@@ -146,6 +188,9 @@ def collect_file_tokens(value) -> list[str]:
 
 
 def replace_attachment(payload: dict, logical: str, actual: str, record_id: str, table_cfg: dict, feishu: dict, cfg: dict, cfg_path: Path) -> dict:
+    path, status = materialize_attachment(payload.get(logical), logical, cfg, cfg_path)
+    if not path:
+        return {"ok": False, "error": status}
     existing = run_cli([
         "base", "+record-get",
         "--base-token", feishu["base_token"],
@@ -154,7 +199,27 @@ def replace_attachment(payload: dict, logical: str, actual: str, record_id: str,
         "--field-id", actual,
         "--format", "json",
     ])
-    tokens = list(dict.fromkeys(collect_file_tokens(existing))) if existing.get("ok") else []
+    if not existing.get("ok"):
+        return {"ok": False, "error": "无法读取旧附件，保留原状", "response": existing}
+    tokens = list(dict.fromkeys(collect_file_tokens(existing)))
+    uploaded = run_cli([
+        "base", "+record-upload-attachment",
+        "--base-token", feishu["base_token"],
+        "--table-id", table_cfg["table_id"],
+        "--record-id", record_id,
+        "--field-id", actual,
+        "--file", f"./{path.name}",
+        "--format", "json",
+    ], cwd=str(path.parent))
+    if not uploaded.get("ok"):
+        return {"ok": False, "error": "新附件上传失败，旧附件未删除", "response": uploaded}
+    read_args = ["base", "+record-get", "--base-token", feishu["base_token"],
+                 "--table-id", table_cfg["table_id"], "--record-id", record_id,
+                 "--field-id", actual, "--format", "json"]
+    after_upload = run_cli(read_args)
+    new_tokens = set(collect_file_tokens(after_upload)) - set(tokens) if after_upload.get("ok") else set()
+    if len(new_tokens) != 1:
+        return {"ok": False, "error": "未能确认唯一新附件，旧附件未删除", "response": after_upload}
     removed = None
     if tokens:
         removed = run_cli([
@@ -169,24 +234,14 @@ def replace_attachment(payload: dict, logical: str, actual: str, record_id: str,
         ])
         if not removed.get("ok"):
             return {"ok": False, "error": "旧附件清理失败", "existing_tokens": tokens, "response": removed}
-    path, status = materialize_attachment(payload.get(logical), logical, cfg, cfg_path)
-    if not path:
-        return {"ok": False, "error": status, "existing_tokens": tokens}
-    uploaded = run_cli([
-        "base", "+record-upload-attachment",
-        "--base-token", feishu["base_token"],
-        "--table-id", table_cfg["table_id"],
-        "--record-id", record_id,
-        "--field-id", actual,
-        "--file", f"./{path.name}",
-        "--format", "json",
-    ], cwd=str(path.parent))
+    verified = run_cli(read_args)
+    verified_tokens = collect_file_tokens(verified)
     return {
-        "ok": bool(uploaded.get("ok")),
+        "ok": bool(verified.get("ok")) and len(verified_tokens) == 1 and set(verified_tokens) == new_tokens,
         "status": status,
         "file": str(path),
         "removed_tokens": tokens,
-        "response": uploaded,
+        "response": verified,
     }
 
 
@@ -224,7 +279,7 @@ def find_existing(url: str, table_cfg: dict, feishu: dict) -> str | None:
         "--format", "json",
     ])
     if not response.get("ok"):
-        return None
+        raise ConfigError("查重查询失败，未创建记录；请排查后重试。")
     data = response.get("data") or {}
     ids = data.get("record_id_list") or []
     rows = data.get("data") or []
@@ -248,7 +303,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="按用户确认的分类表提取字段并写入飞书 Base")
     ap.add_argument("--config", default=None)
     ap.add_argument("--payload", required=True)
-    ap.add_argument("--category", default=None, help="分类表名称或编号 1-6；优先于 payload.category")
+    ap.add_argument("--category", default=None, help="分类表名称或编号 1-7；优先于 payload.category")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
@@ -270,6 +325,13 @@ def main() -> int:
         source_url = payload.get("source_url") or payload.get("link")
         if not source_url:
             raise ConfigError("payload 缺少 source_url/链接。")
+        schema = run_cli(["base", "+field-list", "--base-token", feishu["base_token"],
+                          "--table-id", table_cfg["table_id"], "--format", "json"])
+        if not schema.get("ok"):
+            raise ConfigError("无法读取目标表字段，未执行写入。")
+        field_map = prepare_fields(payload, field_map, schema.get("data", {}).get("fields", []))
+        if "source_url" not in field_map:
+            raise ConfigError("目标表缺少配置中的链接字段，无法可靠查重。")
     except (ConfigError, json.JSONDecodeError) as e:
         print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
         return 2
@@ -283,13 +345,17 @@ def main() -> int:
         print(json.dumps({"ok": True, "dry_run": True, "category": category, "table_id": table_cfg["table_id"], "mapped_payload": mapped, "attachment_jobs": attachment_jobs}, ensure_ascii=False, indent=2))
         return 0
 
-    record_id = find_existing(str(source_url), table_cfg, feishu)
+    try:
+        record_id = find_existing(str(source_url), table_cfg, feishu)
+    except ConfigError as e:
+        print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
+        return 2
     args_list = ["base", "+record-upsert", "--base-token", feishu["base_token"], "--table-id", table_cfg["table_id"], "--json", json.dumps(mapped, ensure_ascii=False)]
     if record_id:
         args_list += ["--record-id", record_id]
     response = run_cli(args_list)
     final_record_id = record_id or extract_new_record_id(response)
-    attachments = upload_attachments(payload, field_map, final_record_id, cfg, cfg_path, table_cfg, feishu)
+    attachments = upload_attachments(payload, field_map, final_record_id, cfg, cfg_path, table_cfg, feishu) if response.get("ok") else {}
     record_ok = bool(response.get("ok"))
     attachments_ok = all(v.get("ok") for v in attachments.values())
     outcome = {
